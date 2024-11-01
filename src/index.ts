@@ -28,6 +28,7 @@ interface TriggeredSurvey {
     survey: {
         survey_uuid: string;
         name: string;
+        is_quick_survey: boolean;
     };
     delayed_timestamp: string,
     delay?: number
@@ -51,12 +52,16 @@ class Polling {
     baseUrl: string = "https://app.polling.com";
     baseApiUrl: string = "https://api.polling.com";
 
+    // baseUrl: string = "http://127.0.0.1:3000";
+    // baseApiUrl: string = "http://127.0.0.1";
+
     customerId?: string;
     apiKey?: string;
 
     initialized: boolean = false;
     currentSurveyUuid: string | null = null;
-    surveyPollRateMsec: number = 30000;
+    surveyPollRateMsec: number = 60_000; // 1 minute default
+    surveyClosePostponeMinutes: number = 30; // 30 minutes default
     isQuickSurveysEnabled: boolean = false;
     isSurveyCurrentlyVisible: boolean = false;
     isAvailableSurveysCheckDisabled: boolean = false;
@@ -67,17 +72,17 @@ class Polling {
     onRewardCallback?: (reward: Reward) => void;
     onSurveyAvailableCallback?: () => void;
 
-
     surveyViewBaseUrl: string;
-    surveyApiBaseUrl: string;
+    surveyApiBaseUrlSDK: string;
     eventApiBaseUrl: string;
     surveyViewUrl?: string;
+    surveysDefaultEmbedViewUrl?: string;
     surveyApiUrl?: string;
     eventApiUrl?: string;
 
     constructor() {
         this.surveyViewBaseUrl = this.baseUrl + "/sdk";
-        this.surveyApiBaseUrl = this.baseApiUrl + "/api/sdk/surveys";
+        this.surveyApiBaseUrlSDK = this.baseApiUrl + "/api/sdk/surveys";
         this.eventApiBaseUrl = this.baseApiUrl + "/api/events/collect";
     }
 
@@ -106,16 +111,22 @@ class Polling {
         this.intervalLogic();
     }
 
+    /**
+     * On the fly customer_id change
+     */
     public setCustomerId(customerId: string) {
         this.customerId = customerId;
         this.updateUrls();
     }
 
+
+    /**
+     * On the fly apiKey change
+     */
     public setApiKey(apiKey: string) {
         this.apiKey = apiKey;
         this.updateUrls();
     }
-
 
     public logPurchase(integerCents: number) {
         this.logEvent("Purchase", integerCents.toString());
@@ -125,39 +136,35 @@ class Polling {
         this.logEvent("Session");
     }
 
-    public logEvent(eventName: string, eventValue: string = "") {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', this.eventApiUrl!, true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    public async logEvent(eventName: string, eventValue: number | string = "") {
+        try {
+            const response = await fetch(this.eventApiUrl!, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    event: eventName,
+                    value: eventValue as any
+                })
+            });
 
-        const that = this;
-
-        xhr.onload = function () {
-            if (!(this.status >= 200 && this.status < 300)) {
-                that.onFailure('Failed to log event: ' + this.status);
+            if (!response.ok) {
+                this.onFailure('Failed to log event: ' + response.status);
+                return;
             }
-        };
 
-        xhr.onerror = function () {
-            that.onFailure('Network error.');
-        };
+            const responseData = await response.json();
 
-        xhr.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 200) {
-                const response = JSON.parse(this.responseText);
-
-                if (!response?.triggered_surveys?.length) {
-                    return;
-                }
-
-                that.onTriggeredSurveysUpdated(response.triggered_surveys as TriggeredSurvey[]);
+            if (responseData?.triggered_surveys?.length) {
+                this.onTriggeredSurveysUpdated(responseData.triggered_surveys as TriggeredSurvey[]);
             }
-        };
-
-        const postData = 'event=' + eventName + '&value=' + eventValue;
-        xhr.send(postData);
+        } catch (error) {
+            this.onFailure('Network error.');
+        }
     }
 
+    // Enable and disable the quick surveys check on the available surveys update
     public enableQuickSurveys() {
         this.isQuickSurveysEnabled = true;
         this.loadAvailableSurveys();
@@ -167,6 +174,9 @@ class Polling {
         this.isQuickSurveysEnabled = false;
     }
 
+    /**
+     * Show a survey (quick) in a right corner popup
+     */
     public showQuickSurvey(surveyUuid: string) {
         if (this.isSurveyCurrentlyVisible) return;
 
@@ -174,6 +184,9 @@ class Polling {
         this.showCornerPopup(`${this.surveyViewBaseUrl}/survey/${surveyUuid}?customer_id=${this.customerId}&api_key=${this.apiKey}&quick=true`);
     }
 
+    /**
+     * Show a survey in a full page popup
+     */
     public showSurvey(surveyUuid: string) {
         if (this.isSurveyCurrentlyVisible) return;
 
@@ -181,10 +194,14 @@ class Polling {
         this.showFullPagePopup(`${this.surveyViewBaseUrl}/survey/${surveyUuid}?customer_id=${this.customerId}&api_key=${this.apiKey}`);
     }
 
-    public showAvailableSurveys() {
+    /**
+     * Standard method to show the available surveys page
+     * The format is based on the embed settings on Polling.com
+     */
+    public showEmbedView() {
         if (this.isSurveyCurrentlyVisible) return;
 
-        this.showFullPagePopup(this.surveyViewUrl!);
+        this.showFullPagePopup(this.surveysDefaultEmbedViewUrl!);
     }
 
     public getLocalSurveyResults(surveyUiid: string) {
@@ -196,11 +213,15 @@ class Polling {
     // Internal Methods
 
     private updateUrls() {
+        this.surveysDefaultEmbedViewUrl = `${this.baseUrl}/embed/${this.apiKey}?customer_id=${this.customerId}`;
         this.surveyViewUrl = `${this.surveyViewBaseUrl}/available-surveys?customer_id=${this.customerId}&api_key=${this.apiKey}`;
-        this.surveyApiUrl = `${this.surveyApiBaseUrl}/available?customer_id=${this.customerId}&api_key=${this.apiKey}`;
+        this.surveyApiUrl = `${this.surveyApiBaseUrlSDK}/available?customer_id=${this.customerId}&api_key=${this.apiKey}`;
         this.eventApiUrl = `${this.eventApiBaseUrl}?user=${this.customerId}&api_key=${this.apiKey}`;
     }
 
+    /**
+     * Pool method that checks for available surveys and triggered surveys
+     */
     private intervalLogic() {
         if (!this.initialized || !this.apiKey || !this.customerId) return;
 
@@ -211,14 +232,23 @@ class Polling {
         this.checkAvailableTriggeredSurveys();
     }
 
+    /**
+     * Store the survey results in localstorage
+     */
     private storeLocalSurveyResult(surveyUiid: string, surveyResultData: string) {
         localStorage.setItem(surveyUiid, surveyResultData);
     }
 
+    /**
+     * Setup a postMessage bridge to communicate with the survey iframe
+     * and handle actions when the survey state change
+     */
     private setupPostMessageBridge() {
         window.addEventListener('message', (event: MessageEvent) => {
             const allowedOriginPattern = /https?:\/\/([a-zA-Z0-9]+\.)*polling\.com/;
+
             if (allowedOriginPattern.test(event.origin)) {
+
                 console.log('Received message:', event.data);
                 switch (event.data.event) {
                     case 'survey.completed':
@@ -251,8 +281,6 @@ class Polling {
         });
     }
 
-
-
     private onFailure(error: string) {
         if (this.onFailureCallback) {
             this.onFailureCallback(error);
@@ -265,12 +293,17 @@ class Polling {
         }
     }
 
+    /**
+     * Update the localstorage cache with the new triggered surveys
+     */
     private onTriggeredSurveysUpdated(surveys: TriggeredSurvey[]) {
+        // Add the new trigered surveys to the localstorage cache
         let newTriggeredSurveys = [
             ...JSON.parse(localStorage.getItem('polling:triggered_surveys') || '[]'),
             ...surveys
         ];
 
+        // Remove duplicates, to prevent showing the same survey multiple times
         newTriggeredSurveys = newTriggeredSurveys.filter((obj, index) =>
             newTriggeredSurveys.findIndex((item) => item.location === obj.location) === index
         );
@@ -283,54 +316,142 @@ class Polling {
         this.checkAvailableTriggeredSurveys();
     }
 
+    /**
+     * Remove a triggered survey from the localstorage cache
+     */
     private removeTriggeredSurvey(surveyUuid: string) {
+        // Retrieve from cache, remove the survey, and store it back
         let triggeredSurveys = JSON.parse(localStorage.getItem('polling:triggered_surveys') || '[]') as TriggeredSurvey[];
+
         triggeredSurveys = triggeredSurveys.filter(triggered => triggered.survey.survey_uuid !== surveyUuid);
+
         localStorage.setItem('polling:triggered_surveys', JSON.stringify(triggeredSurveys));
     }
 
-    private checkAvailableTriggeredSurveys() {
+    private postponeTriggeredSurvey(surveyUuid: string) {
+        // Retrieve from cache, update the delay, and store it back
+        let triggeredSurveys = JSON.parse(localStorage.getItem('polling:triggered_surveys') || '[]') as TriggeredSurvey[];
+
+        let triggeredSurvey = triggeredSurveys.find(triggered => triggered.survey.survey_uuid === surveyUuid);
+
+        if (!triggeredSurvey) return;
+
+        triggeredSurvey.delay = (triggeredSurvey?.delay|| 0) + (this.surveyClosePostponeMinutes * 60);
+        triggeredSurvey.delayed_timestamp = this.addMinutes(new Date(triggeredSurvey.delayed_timestamp), this.surveyClosePostponeMinutes).toISOString();
+
+        // Update the entry on the array
+        triggeredSurveys = triggeredSurveys.map(triggered => {
+            if (triggered.survey.survey_uuid === surveyUuid) {
+                return triggeredSurvey;
+            }
+            return triggered;
+        });
+
+        localStorage.setItem('polling:triggered_surveys', JSON.stringify(triggeredSurveys));
+    }
+
+    /**
+     * Check if there are any triggered surveys that should be shown to the user
+     * If there are, show the first one that is valid in a popup
+     */
+    private async checkAvailableTriggeredSurveys() {
         if (this.isSurveyCurrentlyVisible) return;
 
+        // Look for all triggered surveys stored in localstorage
         let triggeredSurveys = JSON.parse(localStorage.getItem('polling:triggered_surveys') || '[]') as TriggeredSurvey[];
 
         if (!triggeredSurveys.length) {
             return;
         }
 
+        // Find the first survey that the delayed_timestamp already passed
         const now = (new Date()).getTime();
         const triggeredSurvey = triggeredSurveys.find(triggered => {
             const delayedTs = new Date(triggered.delayed_timestamp);
             return delayedTs.getTime() < now;
         });
 
-        if (triggeredSurvey) {
+        if (!triggeredSurvey) return;
+
+        // If we found one, check if still valid (active and etc.)
+        let surveyDetails = await this.getSurveyDetails(triggeredSurvey.survey.survey_uuid);
+
+        if (!surveyDetails || surveyDetails.user_survey_status != "available") {
+            // Survey not valid anymore, remove it from triggered surveys, and check again for the next survey
+            this.removeTriggeredSurvey(triggeredSurvey.survey.survey_uuid);
+
+            this.checkAvailableTriggeredSurveys();
+            return;
+        }
+
+        // Survey found and valid, show it to the user
+        if (triggeredSurvey.survey.is_quick_survey) {
+            this.showQuickSurvey(triggeredSurvey.survey.survey_uuid);
+        } else {
             this.showSurvey(triggeredSurvey.survey.survey_uuid);
         }
     }
 
-    private loadAvailableSurveys() {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', this.surveyApiUrl!, true);
+    /**
+     * Check the API endpoint to see if there are any available surveys
+     * on the embed for the current user
+     */
+    private async loadAvailableSurveys() {
+        try {
+            const response = await fetch(this.surveyApiUrl!, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
 
-        const that = this;
-
-        xhr.onload = function () {
-            if (this.status >= 200 && this.status < 300) {
-                that.cachedAvailableSurveys = JSON.parse(this.responseText);
-                that.onSurveysUpdated();
-            } else {
-                that.onFailure('Failed to load: ' + this.status);
+            if (!response.ok) {
+                this.onFailure('Failed to load: ' + response.status);
+                return;
             }
-        };
 
-        xhr.onerror = function () {
-            that.onFailure('Network error.');
-        };
-
-        xhr.send();
+            // Store the available surveys in the cache and trigger the callback
+            this.cachedAvailableSurveys = await response.json();
+            this.onSurveysUpdated();
+        } catch (error) {
+            this.onFailure('Network error.');
+        }
     }
 
+    /**
+     * Fetch details for a given survey uuid
+     * Useful to check if a survey still valid.
+     */
+    private async getSurveyDetails(surveyUuid: string) {
+        let url = `${this.baseApiUrl}/api/sdk/surveys/${surveyUuid}?customer_id=${this.customerId}&api_key=${this.apiKey}`;
+
+        try {
+            const response = await fetch(url!, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                this.onFailure('Failed to load: ' + response.status);
+                return null;
+            }
+
+            let json = await response.json();
+
+            return json?.data ?? {};
+        } catch (error) {
+            this.onFailure('Network error.');
+
+            return null;
+        }
+    }
+
+    /**
+     * Callback method that is triggered when the available surveys are updated
+     * Show any quick survey if available
+     */
     private onSurveysUpdated() {
         const previousSurveysAvailable = this.numSurveysAvailable;
 
@@ -347,11 +468,13 @@ class Polling {
         }
     }
 
-    // Generates a HTML popup
+    // Methods to generate the HTML popup
+
     private showCornerPopup(iframeUrl: string) {
         if (this.isSurveyCurrentlyVisible) {
             return;
         }
+
         this.isSurveyCurrentlyVisible = true;
 
         const popup = document.createElement('div');
@@ -370,31 +493,7 @@ class Polling {
 
         setTimeout(() => { popup.style.bottom = '20px'; }, 100);
 
-        const iframe = document.createElement('iframe');
-        iframe.src = iframeUrl;
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = 'none';
-        iframe.addEventListener('load', () => iframe.removeAttribute('srcdoc'));
-        iframe.srcdoc = "<center style='margin-top: 60px; font-style: italic;'>Loading survey, one moment...</center>"
-
-        const closeButton = document.createElement('button');
-        closeButton.innerHTML = '&times;';
-        closeButton.style.position = 'absolute';
-        closeButton.style.top = '10px';
-        closeButton.style.right = '10px';
-        closeButton.style.border = 'none';
-        closeButton.style.background = 'none';
-        closeButton.style.fontSize = '24px';
-        closeButton.style.cursor = 'pointer';
-        closeButton.addEventListener('click', () => {
-            document.body.removeChild(popup);
-            this.isSurveyCurrentlyVisible = false;
-        });
-
-        popup.appendChild(iframe);
-        popup.appendChild(closeButton);
-        document.body.appendChild(popup);
+        this.generateIframe(iframeUrl, popup);
     }
 
     private showFullPagePopup(iframeUrl: string) {
@@ -428,6 +527,10 @@ class Polling {
         popup.style.height = '80%';
         overlay.appendChild(popup);
 
+        this.generateIframe(iframeUrl, popup, overlay);
+    }
+
+    private generateIframe(iframeUrl: string, parentElement: HTMLElement, overlay: HTMLElement | null = null) {
         const iframe = document.createElement('iframe');
         iframe.src = iframeUrl;
         iframe.style.width = '100%';
@@ -446,12 +549,20 @@ class Polling {
         closeButton.style.fontSize = '24px';
         closeButton.style.cursor = 'pointer';
         closeButton.addEventListener('click', () => {
-            document.body.removeChild(overlay);
+            document.body.removeChild(overlay || parentElement);
             this.isSurveyCurrentlyVisible = false;
+
+            // Survey was cloned without being finished, postpone it
+            this.postponeTriggeredSurvey(this.currentSurveyUuid!);
         });
 
-        popup.appendChild(iframe);
-        popup.appendChild(closeButton);
-        document.body.appendChild(overlay);
+        parentElement.appendChild(iframe);
+        parentElement.appendChild(closeButton);
+
+        document.body.appendChild(overlay || parentElement);
+    }
+    
+    private addMinutes(date: Date, minutes: number) {
+        return new Date(date.getTime() + minutes*60000);
     }
 }

@@ -22,7 +22,7 @@
         </div>
 
         <div class="row mx-0">
-            <input type="text" id="apiKey" class="col-10 form-control my-2" placeholder="Api KEY" />
+            <input type="text" id="apiKey" class="col-10 form-control my-2" placeholder="API Key" />
             <div class="col-2">
                 <button class="btn btn-info mt-2" onclick="polling.setApiKey(document.getElementById('apiKey').value)">
                     Set API Key
@@ -33,8 +33,8 @@
 
     <div class="col-12">
         <b>Surveys</b><br />
-        <button onclick="polling.showAvailableSurveys()" class="btn btn-primary">
-            Show Available Surveys</button><br />
+        <button onclick="polling.showEmbedView()" class="btn btn-primary">
+            Show Default View</button><br />
         <input type="text" id="surveyId" class="form-control my-2" placeholder="Survey UUID" />
         <button onclick="polling.showSurvey(document.getElementById('surveyId').value)" class="btn btn-primary">
             Show Single Survey
@@ -48,7 +48,7 @@
         <b>Events</b><br />
         <button onclick="polling.logSession()" class="btn btn-success">Log Session Event</button>
         <button onclick="polling.logPurchase(99)" class="btn btn-success">Log Purchase Event (99 cents)</button>
-        <button onclick="polling.logEvent('test-event', 'test')" class="btn btn-success">
+        <button onclick="polling.logEvent('Trigger Test', 'test')" class="btn btn-success">
             Log Custom Event (name "test-event" and value "test")
         </button>
     </div>
