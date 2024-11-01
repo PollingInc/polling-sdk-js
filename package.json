@@ -1,0 +1,20 @@
+{
+  "name": "polling-js-sdk",
+  "version": "1.0.0",
+  "description": "JS SDK to interact with Polling.com services.",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsc --watch & nodemon dist",
+    "build": "tsc && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --sourcemap --minify --allow-overwrite --outfile=./dist/polling-sdk.js && rm ./dist/index.js"
+  },
+  "keywords": [
+    "polling",
+    "sdk",
+    "polling.com"
+  ],
+  "author": "Polling.com",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

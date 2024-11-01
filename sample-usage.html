@@ -1,0 +1,82 @@
+<html>
+
+<head>
+    <title>Polling.com JS SDK - Sample</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+    integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous" />
+
+    <script src="./dist/polling-sdk.js"></script>
+</head>
+
+<body>
+    <div class="col-12">
+        <b>Details</b><br />
+        <div class="row mx-0">
+            <input type="text" id="customerId" class="col-10 form-control my-2" placeholder="Customer ID" />
+            <div class="col-2">
+                <button class="btn btn-info mt-2"
+                    onclick="polling.setCustomerId(document.getElementById('customerId').value)">
+                    Set Customer ID
+                </button>
+            </div>
+        </div>
+
+        <div class="row mx-0">
+            <input type="text" id="apiKey" class="col-10 form-control my-2" placeholder="Api KEY" />
+            <div class="col-2">
+                <button class="btn btn-info mt-2" onclick="polling.setApiKey(document.getElementById('apiKey').value)">
+                    Set API Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <b>Surveys</b><br />
+        <button onclick="polling.showAvailableSurveys()" class="btn btn-primary">
+            Show Available Surveys</button><br />
+        <input type="text" id="surveyId" class="form-control my-2" placeholder="Survey UUID" />
+        <button onclick="polling.showSurvey(document.getElementById('surveyId').value)" class="btn btn-primary">
+            Show Single Survey
+        </button>
+        <button onclick="polling.showQuickSurvey(document.getElementById('surveyId').value)" class="btn btn-primary">
+            Show Single quick survey (corner)
+        </button>
+    </div>
+
+    <div class="col-12 mt-4">
+        <b>Events</b><br />
+        <button onclick="polling.logSession()" class="btn btn-success">Log Session Event</button>
+        <button onclick="polling.logPurchase(99)" class="btn btn-success">Log Purchase Event (99 cents)</button>
+        <button onclick="polling.logEvent('test-event', 'test')" class="btn btn-success">
+            Log Custom Event (name "test-event" and value "test")
+        </button>
+    </div>
+
+    <script>
+        var polling = new Polling();
+        polling.initialize({
+            customerId: "test-sdk",
+            apiKey: "bxxH5w3mdj7z6kvaBqYyeJbxRwTsgX85fy5i",
+            onSuccess: onCustomerSuccessCallback,
+            onFailure: onCustomerFailureCallback,
+            onReward: onCustomerRewardCallback,
+            onSurveyAvailable: onCustomerSurveyAvailableCallback,
+        });
+
+        function onCustomerSuccessCallback(data) {
+            console.log("onCustomerSuccessCallback: " + JSON.stringify(data));
+        }
+        function onCustomerFailureCallback(data) {
+            console.log("onCustomerFailureCallback: " + data);
+        }
+        function onCustomerRewardCallback(data) {
+            console.log("onCustomerRewardCallback: " + JSON.stringify(data));
+        }
+        function onCustomerSurveyAvailableCallback() {
+            console.log("onCustomerSurveyAvailableCallback");
+        }
+    </script>
+</body>
+
+</html>
