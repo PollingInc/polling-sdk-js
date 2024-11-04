@@ -62,8 +62,7 @@ polling.initialize({
 });
 ```
 
-### Availabel Methods
-
+### Available Methods
 
 Available methods are
 - `polling.logSession()` - Logs a simple Session event for the given user
