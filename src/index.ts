@@ -24,7 +24,6 @@ export interface TriggeredSurvey {
     survey: {
         survey_uuid: string;
         name: string;
-        is_quick_survey: boolean;
     };
     delayed_timestamp: string,
     delay?: number
@@ -58,7 +57,6 @@ export class Polling {
     currentSurveyUuid: string | null = null;
     surveyPollRateMsec: number = 60_000; // 1 minute default
     surveyClosePostponeMinutes: number = 30; // 30 minutes default
-    isQuickSurveysEnabled: boolean = false;
     isSurveyCurrentlyVisible: boolean = false;
     isAvailableSurveysCheckDisabled: boolean = false;
     cachedAvailableSurveys: any = {};
@@ -158,26 +156,6 @@ export class Polling {
         } catch (error) {
             this.onFailure('Network error.');
         }
-    }
-
-    // Enable and disable the quick surveys check on the available surveys update
-    public enableQuickSurveys() {
-        this.isQuickSurveysEnabled = true;
-        this.loadAvailableSurveys();
-    }
-
-    public disableQuickSurveys() {
-        this.isQuickSurveysEnabled = false;
-    }
-
-    /**
-     * Show a survey (quick) in a right corner popup
-     */
-    public showQuickSurvey(surveyUuid: string) {
-        if (this.isSurveyCurrentlyVisible) return;
-
-        this.currentSurveyUuid = surveyUuid;
-        this.showCornerPopup(`${this.surveyViewBaseUrl}/survey/${surveyUuid}?customer_id=${this.customerId}&api_key=${this.apiKey}&quick=true`);
     }
 
     /**
@@ -381,11 +359,7 @@ export class Polling {
         }
 
         // Survey found and valid, show it to the user
-        if (triggeredSurvey.survey.is_quick_survey) {
-            this.showQuickSurvey(triggeredSurvey.survey.survey_uuid);
-        } else {
-            this.showSurvey(triggeredSurvey.survey.survey_uuid);
-        }
+        this.showSurvey(triggeredSurvey.survey.survey_uuid);
     }
 
     /**
@@ -446,7 +420,6 @@ export class Polling {
 
     /**
      * Callback method that is triggered when the available surveys are updated
-     * Show any quick survey if available
      */
     private onSurveysUpdated() {
         const previousSurveysAvailable = this.numSurveysAvailable;
@@ -455,43 +428,9 @@ export class Polling {
             this.onSurveyAvailable();
         }
         this.numSurveysAvailable = this.cachedAvailableSurveys.data.length;
-
-        if (this.isQuickSurveysEnabled) {
-            const quickSurvey = this.cachedAvailableSurveys.data.find((survey: any) => survey.is_quick_survey);
-            if (quickSurvey) {
-                this.showQuickSurvey(quickSurvey.uuid);
-            }
-        }
     }
 
     // Methods to generate the HTML popup
-
-    private showCornerPopup(iframeUrl: string) {
-        if (this.isSurveyCurrentlyVisible) {
-            return;
-        }
-
-        this.isSurveyCurrentlyVisible = true;
-
-        const popup = document.createElement('div');
-        popup.style.overflow = 'hidden';
-        popup.style.backgroundColor = '#fff';
-        popup.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-        popup.style.zIndex = '1010';
-
-        popup.style.borderRadius = '10px 10px 0 0';
-        popup.style.position = 'fixed';
-        popup.style.width = '320px';
-        popup.style.height = '30%';
-        popup.style.right = '20px';
-        popup.style.bottom = '-30%';
-        popup.style.transition = 'bottom 0.5s';
-
-        setTimeout(() => { popup.style.bottom = '20px'; }, 100);
-
-        this.generateIframe(iframeUrl, popup);
-    }
-
     private showFullPagePopup(iframeUrl: string) {
         if (this.isSurveyCurrentlyVisible) {
             return;
@@ -522,18 +461,14 @@ export class Polling {
         popup.style.maxWidth = '600px';
         popup.style.height = '80%';
         overlay.appendChild(popup);
-
-        this.generateIframe(iframeUrl, popup, overlay);
-    }
-
-    private generateIframe(iframeUrl: string, parentElement: HTMLElement, overlay: HTMLElement | null = null) {
+    
         const iframe = document.createElement('iframe');
         iframe.src = iframeUrl;
         iframe.style.width = '100%';
         iframe.style.height = '100%';
         iframe.style.border = 'none';
         iframe.addEventListener('load', () => iframe.removeAttribute('srcdoc'));
-        iframe.srcdoc = "<center style='margin-top: 60px; font-style: italic;'>Loading survey, one moment...</center>"
+        iframe.srcdoc = "<center style='margin-top: 60px;'>Loading survey, one moment...</center>"
 
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '&times;';
@@ -545,17 +480,17 @@ export class Polling {
         closeButton.style.fontSize = '24px';
         closeButton.style.cursor = 'pointer';
         closeButton.addEventListener('click', () => {
-            document.body.removeChild(overlay || parentElement);
+            document.body.removeChild(overlay || popup);
             this.isSurveyCurrentlyVisible = false;
 
             // Survey was cloned without being finished, postpone it
             this.postponeTriggeredSurvey(this.currentSurveyUuid!);
         });
 
-        parentElement.appendChild(iframe);
-        parentElement.appendChild(closeButton);
+        popup.appendChild(iframe);
+        popup.appendChild(closeButton);
 
-        document.body.appendChild(overlay || parentElement);
+        document.body.appendChild(overlay || popup);
     }
     
     private addMinutes(date: Date, minutes: number) {
