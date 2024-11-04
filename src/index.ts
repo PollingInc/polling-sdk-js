@@ -82,7 +82,7 @@ export class Polling {
 
     public initialize(customerPayload: SdkPayload) {
         if (this.initialized) {
-            return;
+            return this;
         }
 
         this.initialized = true;
@@ -103,6 +103,8 @@ export class Polling {
         }
         (window as any).pollingSurveyPollInterval = setInterval(() => this.intervalLogic(), this.surveyPollRateMsec);
         this.intervalLogic();
+
+        return this;
     }
 
     /**
