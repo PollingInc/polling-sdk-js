@@ -6,6 +6,8 @@ Polling.com JS SDK is a JavaScript library for interacting with Polling.com serv
 
 This SDK allows you to send events, log sessions and purchases, display embedded survey pages or show a specific survey seamlessly within your web application.
 
+[Read more on our docs](https://docs.polling.com/integration/javascript-sdk)
+
 ## Installation
 
 You can install the SDK using npm:
