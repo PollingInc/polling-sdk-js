@@ -1,8 +1,4 @@
-interface Window {
-    pollingSurveyPollInterval?: number;
-}
-
-interface CustomerPayload {
+export interface SdkPayload {
     customerId: string;
     apiKey: string;
     onSuccess?: (data: any) => void;
@@ -12,7 +8,7 @@ interface CustomerPayload {
     disableAvailableSurveysPoll?: boolean;
 }
 
-interface SurveyData {
+export interface SurveyData {
     surveyUuid: string;
     data: {
         answers: any;
@@ -24,7 +20,7 @@ interface SurveyData {
     };
 }
 
-interface TriggeredSurvey {
+export interface TriggeredSurvey {
     survey: {
         survey_uuid: string;
         name: string;
@@ -34,7 +30,7 @@ interface TriggeredSurvey {
     delay?: number
 }
 
-class Reward {
+export class Reward {
     completedAt: number;
     rewardAmount: number | string;
     rewardName: string;
@@ -48,7 +44,7 @@ class Reward {
     }
 }
 
-class Polling {
+export class Polling {
     baseUrl: string = "https://app.polling.com";
     baseApiUrl: string = "https://api.polling.com";
 
@@ -86,7 +82,7 @@ class Polling {
         this.eventApiBaseUrl = this.baseApiUrl + "/api/events/collect";
     }
 
-    public initialize(customerPayload: CustomerPayload) {
+    public initialize(customerPayload: SdkPayload) {
         if (this.initialized) {
             return;
         }
@@ -104,10 +100,10 @@ class Polling {
 
         this.setupPostMessageBridge();
 
-        if (window.pollingSurveyPollInterval) {
-            clearInterval(window.pollingSurveyPollInterval);
+        if ((window as any).pollingSurveyPollInterval) {
+            clearInterval((window as any).pollingSurveyPollInterval);
         }
-        window.pollingSurveyPollInterval = setInterval(() => this.intervalLogic(), this.surveyPollRateMsec);
+        (window as any).pollingSurveyPollInterval = setInterval(() => this.intervalLogic(), this.surveyPollRateMsec);
         this.intervalLogic();
     }
 

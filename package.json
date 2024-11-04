@@ -1,5 +1,5 @@
 {
-  "name": "polling-sdk-js",
+  "name": "@pollinginc/polling-sdk-js",
   "version": "1.0.0",
   "description": "JS SDK to interact with Polling.com services.",
   "main": "dist/polling-sdk.js",
