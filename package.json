@@ -8,6 +8,10 @@
     "dev": "tsc --watch & nodemon dist",
     "build": "tsc && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --minify --allow-overwrite --outfile=./dist/polling-sdk.js && rm ./dist/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PollingInc/polling-sdk-js.git"
+  },
   "files": [
     "dist/**/*"
   ],
