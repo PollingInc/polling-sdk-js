@@ -113,6 +113,8 @@ export class Polling {
     public setCustomerId(customerId: string) {
         this.customerId = customerId;
         this.updateUrls();
+
+        return this;
     }
 
 
@@ -122,14 +124,21 @@ export class Polling {
     public setApiKey(apiKey: string) {
         this.apiKey = apiKey;
         this.updateUrls();
+
+
+        return this;
     }
 
     public logPurchase(integerCents: number) {
         this.logEvent("Purchase", integerCents.toString());
+
+        return this;
     }
 
     public logSession() {
         this.logEvent("Session");
+
+        return this;
     }
 
     public async logEvent(eventName: string, eventValue: number | string = "") {
@@ -147,7 +156,7 @@ export class Polling {
 
             if (!response.ok) {
                 this.onFailure('Failed to log event: ' + response.status);
-                return;
+                return this;
             }
 
             const responseData = await response.json();
@@ -158,16 +167,21 @@ export class Polling {
         } catch (error) {
             this.onFailure('Network error.');
         }
+
+
+        return this;
     }
 
     /**
      * Show a survey in a full page popup
      */
     public showSurvey(surveyUuid: string) {
-        if (this.isSurveyCurrentlyVisible) return;
+        if (this.isSurveyCurrentlyVisible) return this;
 
         this.currentSurveyUuid = surveyUuid;
         this.showFullPagePopup(`${this.surveyViewBaseUrl}/survey/${surveyUuid}?customer_id=${this.customerId}&api_key=${this.apiKey}`);
+        
+        return this;
     }
 
     /**
@@ -175,9 +189,11 @@ export class Polling {
      * The format is based on the embed settings on Polling.com
      */
     public showEmbedView() {
-        if (this.isSurveyCurrentlyVisible) return;
+        if (this.isSurveyCurrentlyVisible) return this;
 
         this.showFullPagePopup(this.surveysDefaultEmbedViewUrl!);
+
+        return this;
     }
 
     public getLocalSurveyResults(surveyUiid: string) {
@@ -199,13 +215,15 @@ export class Polling {
      * Pool method that checks for available surveys and triggered surveys
      */
     private intervalLogic() {
-        if (!this.initialized || !this.apiKey || !this.customerId) return;
+        if (!this.initialized || !this.apiKey || !this.customerId) return this;
 
         if (!this.isAvailableSurveysCheckDisabled) {
             this.loadAvailableSurveys();
         }
 
         this.checkAvailableTriggeredSurveys();
+
+        return this;
     }
 
     /**
