@@ -18,6 +18,10 @@ Or just include the following script tag in your HTML:
 
 ```html
 <script src="https://api.polling.com/sdk/polling-sdk-latest.js"></script>
+
+// Or specify the version
+
+<script src="https://api.polling.com/sdk/polling-sdk-1.0.6.js"></script>
 ```
 
 ## Usage
@@ -28,19 +32,20 @@ You will also need to provide a Customer ID (your customer), which is your uniqu
 
 ### Importing the SDK
 
-Add the SDK to your project, if you're using Polling.com JS SDK o on a simple HTML page, where no building is needed you can skip this step:
+Add the SDK to your project, if you're using Polling.com JS SDK o on a simple HTML page, with vanilla javascript, you can skip this step:
 
 ```javascript
 import { Polling } from '@pollinginc/polling-sdk-js';
 ```
 
 ### Initializing the SDK
+Initlize the SDK with your API key and Customer ID.
 
 ```javascript
 const polling = new Polling();
 
 polling.initialize({
-    customerId: "your_customer_id",
+    customerId: "your_unique_customer_id",
     apiKey: "your_api_key",
     onSuccess: (data) => {
         console.log("Success:", data);
@@ -57,29 +62,14 @@ polling.initialize({
 });
 ```
 
-### Displaying Surveys
+### Availabel Methods
 
-#### Show Default Embed View
 
-```javascript
-polling.showEmbedView();
-```
-
-#### Show a Specific Survey
-
-```javascript
-polling.showSurvey("[survey_uuid]");
-```
-
-### Logging Events
-
-```javascript
-// Log a session event
-polling.logSession();
-
-// Log a purchase event
-polling.logPurchase(99); // 99 cents
-
-// Log a custom event
-polling.logEvent('My Nice Event', 'My Great Value');
-```
+Available methods are
+- `polling.logSession()` - Logs a simple Session event for the given user
+- `polling.logPurchase(cents: number)` - Logs a Purchase event for the given user with the amount in cents
+- `polling.logEvent(eventName: string, eventValue?: string | number)` - Sends a custom event name and value - **NOTE:** This method is only available for Business+ plans.
+- `polling.showEmbedView()` - Opens the Polling.com embed view popup, which will show the user's surveys (list of surveys, random or a fixed survey depending on the user's settings)
+- `polling.showSurvey(surveyUiid: string)` - Opens a popup with a specific survey by its UUID
+- `polling.setApiKey(apiKey: string)` - Changes the API key on the fly, useful if you want to handle multiple embeds with a single SDK instance
+- `polling.setCustomerId(customerId: string)` - Changes the Customer ID on the fly

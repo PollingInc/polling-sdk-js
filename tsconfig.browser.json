@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "outFile": "./dist/polling-sdk-vanilla.js",
+    "module": "None",
+    "target": "ES5",
+    "lib": ["dom", "es2015"],
+    "removeComments": true,
+  },
+  "include": ["src/index-no-export.ts"]
+}

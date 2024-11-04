@@ -326,7 +326,7 @@ export class Polling {
         // Retrieve from cache, update the delay, and store it back
         let triggeredSurveys = JSON.parse(localStorage.getItem('polling:triggered_surveys') || '[]') as TriggeredSurvey[];
 
-        let triggeredSurvey = triggeredSurveys.find(triggered => triggered.survey.survey_uuid === surveyUuid);
+        let triggeredSurvey = triggeredSurveys.find(triggered => triggered.survey.survey_uuid === surveyUuid) as TriggeredSurvey;
 
         if (!triggeredSurvey) return;
 

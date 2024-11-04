@@ -6,7 +6,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "tsc --watch & nodemon dist",
-    "build": "rm dist/* -Rf && tsc && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --minify --allow-overwrite --outfile=./dist/polling-sdk.js && mv dist/index.js dist/polling-sdk-vanilla.js"
+    "build-all": "rm dist/* -Rf && npm run build:lib && npm run build:vanilla",
+    "build:lib": "rm dist/* -Rf && tsc --project tsconfig.node.json && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --minify --allow-overwrite --outfile=./dist/polling-sdk.js && rm dist/index.js",
+    "build:vanilla": "rm dist/polling-sdk-vanilla.js -f && cp src/index.ts src/index-no-export.ts && sed -i 's/^export //' src/index-no-export.ts && tsc --project tsconfig.browser.json && rm src/index-no-export.ts -f"
   },
   "repository": {
     "type": "git",
@@ -24,6 +26,7 @@
   "license": "ISC",
   "devDependencies": {
     "esbuild": "^0.24.0",
+    "tsup": "^8.3.5",
     "typescript": "^4.x"
   }
 }
