@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "tsc --watch & nodemon dist",
-    "build": "tsc && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --minify --allow-overwrite --outfile=./dist/polling-sdk.js && rm ./dist/index.js"
+    "build": "rm dist/* -Rf && tsc && esbuild ./dist/index.js --target=chrome58,firefox57,safari11,edge16 --minify --allow-overwrite --outfile=./dist/polling-sdk.js && mv dist/index.js dist/polling-sdk-vanilla.js"
   },
   "repository": {
     "type": "git",
