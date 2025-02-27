@@ -23,7 +23,7 @@ Or just include the following script tag in your HTML:
 
 // Or specify the version
 
-<script src="https://api.polling.com/sdk/polling-sdk-1.0.6.js"></script>
+<script src="https://api.polling.com/sdk/polling-sdk-1.1.0.js"></script>
 ```
 
 ## Usage
