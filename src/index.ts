@@ -55,7 +55,7 @@ export class Polling {
 
     initialized: boolean = false;
     currentSurveyUuid: string | null = null;
-    surveyPollRateMsec: number = 60_000; // 1 minute default
+    surveyPollRateMsec: number = 60 * 1000 * 60; // 1 hour default
     surveyClosePostponeMinutes: number = 30; // 30 minutes default
     isSurveyCurrentlyVisible: boolean = false;
     isAvailableSurveysCheckDisabled: boolean = false;
@@ -72,7 +72,7 @@ export class Polling {
     surveyViewUrl?: string;
     surveysDefaultEmbedViewUrl?: string;
     surveyApiUrl?: string;
-    eventApiUrl?: string;
+    eventApiUrl?: string; 
 
     constructor() {
         this.surveyViewBaseUrl = this.baseUrl + "/sdk";
@@ -95,16 +95,22 @@ export class Polling {
         this.onFailureCallback = customerPayload.onFailure;
         this.onRewardCallback = customerPayload.onReward;
         this.onSurveyAvailableCallback = customerPayload.onSurveyAvailable;
-
         this.setupPostMessageBridge();
+        this.pollSurveysAndSetInterval();
 
+        return this;
+    }
+
+    private pollSurveysAndSetInterval() {
         if ((window as any).pollingSurveyPollInterval) {
             clearInterval((window as any).pollingSurveyPollInterval);
         }
-        (window as any).pollingSurveyPollInterval = setInterval(() => this.intervalLogic(), this.surveyPollRateMsec);
+
+        // Run a first time
         this.intervalLogic();
 
-        return this;
+        // Add the interval for the next runs
+        (window as any).pollingSurveyPollInterval = setInterval(() => this.intervalLogic(), this.surveyPollRateMsec);
     }
 
     /**
@@ -164,6 +170,9 @@ export class Polling {
             if (responseData?.triggered_surveys?.length) {
                 this.onTriggeredSurveysUpdated(responseData.triggered_surveys as TriggeredSurvey[]);
             }
+
+            // Retrigger to chec kif any new survey is available with the event filter
+            this.pollSurveysAndSetInterval();
         } catch (error) {
             this.onFailure('Network error.');
         }
@@ -256,8 +265,8 @@ export class Polling {
                             const reward = new Reward(Date.now(), parseInt(event.data.data.reward.value), event.data.data.reward.name, event.data.data.sessionId);
                             if (this.onRewardCallback) this.onRewardCallback(reward);
                         }
-
-                        this.loadAvailableSurveys();
+                        
+                        this.pollSurveysAndSetInterval();
 
                         break;
                     case 'survey.error':
